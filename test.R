@@ -1,6 +1,6 @@
 source('semi-multicons.R')
 
-data_path <- "../Semi-MultiCons/dataset/iris.csv"
+data_path <- "iris.csv"
 n_ml <- 30
 n_cl <- 60
 kList <- c(2,3,4,5,6)
