@@ -1,6 +1,13 @@
 library(hash)
 library("arules")
 
+# randomly generate pairwise constraints based on ground-truth class
+# data is the ground truth class of dataset (aka y)
+# it should be *values* in R
+# an example of class
+# [1] Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa    
+# [7] Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa     Iris-setosa
+# n_ml and n_cl respectively represent the number of must-link constraints and cannot-link constraints
 generate_constraints <- 
   function(data, n_ml, n_cl) {
     Data_Size <- length(data)
@@ -33,6 +40,20 @@ generate_constraints <-
     return(list(must_link,cannot_link))
   }
 
+# util function to implement MPC-Kmeans
+# data is the dataset, without ground-truth class (aka X)
+# K is the number of clusters we want
+# ml and cl represents the must-link constraints and cannot-link constraints
+# ml and cl must be *matrix* type
+# where each row represent a pairwise constraint
+# an example of cannot-link constraints cl
+#      [,1] [,2]
+# [1,]   18  103
+# [2,]  136   58
+# [3,]  137   89
+# [4,]   20  136
+# [5,]    5  127
+# the first row represent that data instance no.18 has a cannot-link with no.103, where index of data instance starts from *1* (not 0! R index starts with 1)
 mpckmeans <-
   function(data, K, ml, cl, maxIter = 10) {
     dist0 <- function(x,y,A) {
@@ -297,6 +318,9 @@ mpckmeans <-
     return(label)
   }
 
+# function to remove bad clusterings from base clusterings
+# bad means clustering only contains one cluster
+# or there is a super large cluster that containing more than 90% data instances
 refine_base_clusts <- 
   function(BaseClusts) {
   rmv_Indx <- NULL
@@ -318,6 +342,7 @@ refine_base_clusts <-
   return(BaseClusts)
 }
 
+# function to generate binary membership matrix based on base clusterings
 binary_membership_matrix <- 
   function(BaseClusts) {
   rnum <- nrow(BaseClusts)
@@ -341,6 +366,7 @@ binary_membership_matrix <-
   return(All_Matrix)
 }
 
+# function to calculate closed pattern based on binary membership matrix
 closed_frequent_pattern <- 
   function(All_Matrix, Clstrings) {
   
@@ -374,6 +400,7 @@ closed_frequent_pattern <-
   return(FCI)
 }
 
+# consensus function of multicons
 consensus <- 
   function(FCI, Clstrings, Data_Size, MT=0.5) {
   cat("Consensus process starts, may need long time...\n")
@@ -471,6 +498,7 @@ consensus <-
   return(res)
 }
 
+# consensus function of semi-multicons
 constrained_consensus <- 
   function(FCI, Clstrings, Data_Size, MT=0.5, Must_Link, Cannot_Link) {
   cons_n <- c()
@@ -695,7 +723,40 @@ constrained_consensus <-
   return(res)
 }
 
-
+# function to implement semi-multicons, BaseClusts represents the base clusterings calculated
+# from our util function, or directly input from user
+# the BaseClusts should be a *dataframe*
+# an example of BaseClusts
+#    mpckmeans2 mpckmeans3 mpckmeans4 mpckmeans5 mpckmeans6
+#1            1          2          1          4          5
+#2            1          2          2          2          2
+#3            1          2          2          2          2
+#4            1          2          2          2          2
+#5            1          2          2          4          4
+#6            1          2          1          4          5
+#7            1          2          2          2          4
+#8            1          2          2          2          4
+#9            1          2          2          2          2
+#10           1          2          2          2          2
+# each column represents a clustering result, and must be assigned a unique name as column name
+# each row represents a data instance
+# in the example, the first row means the data instance no.1 belongs to cluster 1 for mpckmeans2, cluster 2 for mpckmeans3 etc..
+# the first column represent the clustering results of mpckmeans2 for data instance no.1 to no.10
+# MT by default set to 0.5
+# Must_Link/Cannot_Link represent the must-link/cannot-link constraints generated from our util function
+# or directly input from user
+# the format of Must_Link and Cannot_Link should be the same as ml and cl for mpckemans function
+# that means
+# Must_Link and Cannot_Link must be *matrix* type
+# where each row represent a pairwise constraint
+# an example of cannot-link constraints Cannot_Link
+#      [,1] [,2]
+# [1,]   18  103
+# [2,]  136   58
+# [3,]  137   89
+# [4,]   20  136
+# [5,]    5  127
+# the first row represent that data instance no.18 has a cannot-link with no.103, where index of data instance starts from *1* (not 0! R index starts with 1)
 semi_multicons <- function(BaseClusts, MT, Must_Link, Cannot_Link) {
 
   BaseClusts <- refine_base_clusts(BaseClusts)
@@ -709,6 +770,26 @@ semi_multicons <- function(BaseClusts, MT, Must_Link, Cannot_Link) {
   return(res)
 }
 
+# function to impelemnt multicons, BaseClusts represents the base clusterings calculated
+# from our util function, or directly input from user
+# the BaseClusts should be a *dataframe*
+# an example of BaseClusts
+#    mpckmeans2 mpckmeans3 mpckmeans4 mpckmeans5 mpckmeans6
+#1            1          2          1          4          5
+#2            1          2          2          2          2
+#3            1          2          2          2          2
+#4            1          2          2          2          2
+#5            1          2          2          4          4
+#6            1          2          1          4          5
+#7            1          2          2          2          4
+#8            1          2          2          2          4
+#9            1          2          2          2          2
+#10           1          2          2          2          2
+# each column represents a clustering result, and must be assigned a unique name as column name
+# each row represents a data instance
+# in the example, the first row means the data instance no.1 belongs to cluster 1 for mpckmeans2, cluster 2 for mpckmeans3 etc..
+# the first column represent the clustering results of mpckmeans2 for data instance no.1 to no.10
+# MT by default set to 0.5
 multicons <- function(BaseClusts, MT) {
   BaseClusts <- refine_base_clusts(BaseClusts)
   
