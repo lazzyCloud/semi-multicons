@@ -10,7 +10,8 @@ MT <- 0.5 # merge threshold, by default should be set to 0.5
 
 # read dataset file and separate dataset with ground truth class
 Dataset <- read.csv(file = data_path, header = F)
-data <- Dataset[,c(1:(ncol(Dataset)-1))]
+# normalize dataset
+data <- as.data.frame(scale(Dataset[,c(1:(ncol(Dataset)-1))]))
 class <- Dataset[,ncol(Dataset)] # last column is the ground truth class (y) for iris
 
 # use util function in semi-multicons script to generate pairwise constraints
